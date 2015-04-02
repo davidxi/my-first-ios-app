@@ -8,6 +8,7 @@ var {
   ListView,
   Navigator,
   Text,
+  TextInput,
   TouchableHighlight,
   View,
 } = React;
@@ -42,6 +43,9 @@ var AppNavigator = React.createClass({
     if (route.name === MovieDetailsScene.routeName) {
       props.movieId = route.movieId;
       return React.createElement(MovieDetailsScene, props);
+    } else if (route.name === MovieSearchScene.routeName) {
+      props.movieQuery = route.movieQuery;
+      return React.createElement(MovieSearchScene, props);
     } else {
       // default
       return React.createElement(CurrentMoviesScene, props);
@@ -120,7 +124,7 @@ var CurrentMoviesScene = React.createClass({
       .done();
   },
 
-  render: function() {
+  renderList: function() {
     if (!this.state.loaded) {
       return this.renderLoadingView();
     }
@@ -129,10 +133,18 @@ var CurrentMoviesScene = React.createClass({
       dataSource: this.state.dataSource,
       renderRow: function(movie) {
         return MovieCardFactory(assign(movie, {navigator: self.props.navigator}));
-      },
-      style: styles.listView
+      }
     };
     return React.createElement(ListView, props);
+  },
+
+  render: function() {
+    return (
+      <View style={styles.mainContainer}>
+        <SearchInput navigator={this.props.navigator} query='' />
+        {this.renderList()}
+      </View>
+    );
   }
 });
 
@@ -208,9 +220,115 @@ var MovieDetailsScene = React.createClass({
           dataSource: this.state.similarMovies,
           renderRow: function(movie) {
             return MovieCardFactory(assign(movie, {navigator: this.props.navigator}));
-          }
+          }.bind(this)
         })}
       </View>
+    );
+  }
+});
+
+var MovieSearchScene = React.createClass({
+  mixins: [BaseViewMixin],
+  propTypes: {
+    movieQuery: React.PropTypes.string.isRequired,
+    navigator: React.PropTypes.object.isRequired
+  },
+  statics: {
+    routeName: 'Movie Search'
+  },
+  getInitialState: function() {
+    return {
+      dataSource: new ListView.DataSource({
+        rowHasChanged: (row1, row2) => row1 !== row2,
+      }),
+      loaded: false
+    };
+  },
+  fetchData: function() {
+    var REQUEST_URL = 'http://209.237.233.58/api/public/v1.0/movies/?apikey=shsxnfe3v2ggydvua7u2mtt8&q=' + encodeURIComponent(this.props.movieQuery);
+    fetch(REQUEST_URL)
+      .then((response) => response.json())
+      .then((responseData) => {
+        if (responseData.error) {
+          this.setState({
+            error: responseData.error,
+            loaded: true
+          });
+          return;
+        }
+        if (!responseData.movies || !responseData.movies.length) {
+          this.setState({
+            error: 'No results.',
+            loaded: true
+          });
+          return;
+        }
+        this.setState({
+          dataSource: this.state.dataSource.cloneWithRows(responseData.movies),
+          loaded: true,
+        });
+      })
+      .done();
+  },
+  componentDidMount: function() {
+    this.fetchData();
+  },
+  renderList: function() {
+    if (!this.state.loaded) {
+      return this.renderLoadingView();
+    }
+    if (this.state.error) {
+      return React.createElement(Text, {style: styles.movieDetailsViewBlock}, this.state.error);
+    }
+    var self = this;
+    var props ={
+      dataSource: this.state.dataSource,
+      renderRow: function(movie) {
+        return MovieCardFactory(assign(movie, {navigator: self.props.navigator}));
+      }
+    };
+    return React.createElement(ListView, props);
+  },
+  render: function() {
+
+    var self = this;
+
+    return (
+      <View style={styles.movieDetailsViewContainer}>
+        {this.renderNavBar()}
+        <SearchInput navigator={this.props.navigator} query={this.props.movieQuery} ref='searchInput' />
+        {this.renderList()}
+      </View>
+    );
+  }
+});
+
+var SearchInput = React.createClass({
+  getInitialState: function() {
+    return {input: ''};
+  },
+  propTypes: {
+    navigator: React.PropTypes.object.isRequired,
+    query: React.PropTypes.string.isRequired
+  },
+  submitQuery: function() {
+    this.props.navigator.push({
+      name: MovieSearchScene.routeName,
+      movieQuery: this.state.input
+    });
+  },
+  componentDidMount: function() {
+    this.setState({input: this.props.query});
+  },
+  render: function() {
+    return (
+      <TextInput style={styles.topSearchInput}
+        placeholder="Enter movie name to search"
+        onChangeText={(text) => this.setState({input: text})}
+        onEndEditing={this.submitQuery}
+        onSubmitEditing={this.submitQuery}
+        value={this.state.input} >
+      </TextInput>
     );
   }
 });

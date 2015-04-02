@@ -27,7 +27,7 @@ module.exports = StyleSheet.create({
     width: 53,
     height: 81,
   },
-  listView: {
+  mainContainer: {
     paddingTop: 20,
     backgroundColor: '#F5FCFF',
   },
@@ -47,5 +47,13 @@ module.exports = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#3A9425'
-  }
+  },
+  topSearchInput: {
+    height: 26,
+    borderWidth: 0.5,
+    borderColor: '#0f0f0f',
+    padding: 4,
+    flex: 1,
+    fontSize: 13,
+  },
 });
